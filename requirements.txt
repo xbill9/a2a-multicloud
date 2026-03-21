@@ -1,0 +1,11 @@
+# Dev environment
+pip
+autopep8
+flake8
+black
+
+# App
+google-adk
+google-cloud-aiplatform
+a2a-sdk
+python-json-logger
