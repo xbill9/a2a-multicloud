@@ -57,8 +57,9 @@ docs:
 .PHONY: clean
 clean:
 	@echo "Cleaning up..."
-	@find src -type f -name "*.pyc" -delete
-	@find src -type d -name "__pycache__" -exec rm -rf {} +
+	@find . -type f -name "*.pyc" -delete
+	@find . -type d -name ".adk" -exec rm -rf {} +
+	@find . -type d -name "__pycache__" -exec rm -rf {} +
 
 deploy:
 	@echo "Deploying the comic pipeline to Cloud Run..."

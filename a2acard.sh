@@ -1,4 +1,4 @@
-source $HOME/a2a-hello-world/set_env.sh
+source $HOME/a2a-multicloud/set_env.sh
 
 python a2a-agentcard/agentcard.py $*
 
