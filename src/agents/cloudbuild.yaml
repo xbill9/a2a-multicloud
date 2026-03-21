@@ -19,8 +19,10 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--memory'
+      - '1Gi'
       - '--set-env-vars'
-      - 'GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1'
+      - 'GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1,A2A_PROTOCOL=https,A2A_HOST=a2aeventsnyc-1056842563084.us-central1.run.app,A2A_PORT=443'
 
 # Automatically push the image built in the first step
 images:

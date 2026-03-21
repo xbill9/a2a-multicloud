@@ -17,6 +17,14 @@ ev_agent = RemoteA2aAgent(
     ),
 )
 
+nyc_events_agent = RemoteA2aAgent(
+    name="a2aeventsnyc",
+    description="NYC Events Agent",
+    agent_card=(
+        f"https://a2aeventsnyc-1056842563084.us-central1.run.app{AGENT_CARD_WELL_KNOWN_PATH}"
+    ),
+)
+
 hw_agent = RemoteA2aAgent(
     name="helloworld_agent",
     description="Hello World Agent",
@@ -41,7 +49,7 @@ root_agent = LlmAgent(
         you delegate to your sub agents by the a2a protocol
 
     """,
-    sub_agents=[ev_agent,hw_agent,wt_agent]
+    sub_agents=[nyc_events_agent,ev_agent,hw_agent,wt_agent]
 )
 
 if __name__ == "__main__":
