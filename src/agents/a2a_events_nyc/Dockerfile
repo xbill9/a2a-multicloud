@@ -9,11 +9,11 @@ ENV PORT=8080
 WORKDIR /app
 
 # Install requirements for the agent
-COPY a2a_events_nyc/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt uvicorn
 
 # Copy the agent source code into the container
-COPY a2a_events_nyc/ .
+COPY . .
 
 # Expose the port the app runs on
 EXPOSE 8080

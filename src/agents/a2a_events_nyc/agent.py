@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 root_agent = Agent(
-    name="a2aeventsnyc",
+    name="a2a_events_nyc",
     model="gemini-2.5-flash",
     description="Agent to find events in NYC using Google Search.",
     instruction="Find 3 upcoming events in New York City",
