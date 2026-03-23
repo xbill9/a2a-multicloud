@@ -12,7 +12,7 @@ nyc_events_agent = RemoteA2aAgent(
     name="a2a_events_nyc",
     description="NYC Events Agent",
     agent_card=(
-        f"https://a2a-events-nyc-1056842563084.us-central1.run.app{AGENT_CARD_WELL_KNOWN_PATH}"
+        f"http://127.0.0.1:8080/{AGENT_CARD_WELL_KNOWN_PATH}"
     ),
 )
 

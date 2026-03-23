@@ -16,15 +16,24 @@ logHandler.setFormatter(formatter)
 logger.addHandler(logHandler)
 logger.setLevel(logging.INFO)
 
-def run_command(command, error_msg, capture=True, check=True):
-    """Utility to run shell commands."""
-    try:
-        result = subprocess.run(command, check=check, text=True, capture_output=capture)
-        return result.stdout.strip() if capture else True
-    except subprocess.CalledProcessError as e:
-        if check:
-            logger.error(f"❌ {error_msg}", extra={"error_details": e.stderr if capture else "N/A", "command": command})
-        return None
+def run_command(command, error_msg, capture=True, check=True, retries=0, retry_delay=5, error_substring_to_retry=None):
+    """Utility to run shell commands with optional retries for specific errors."""
+    for attempt in range(retries + 1):
+        try:
+            result = subprocess.run(command, check=check, text=True, capture_output=capture)
+            return result.stdout.strip() if capture else True
+        except subprocess.CalledProcessError as e:
+            if error_substring_to_retry and error_substring_to_retry in e.stderr and attempt < retries:
+                logger.warning(
+                    f"Command failed with '{error_substring_to_retry}'. Retrying in {retry_delay}s... (Attempt {attempt+1}/{retries})"
+                )
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                if check:
+                    logger.error(f"❌ {error_msg}", extra={"error_details": e.stderr if capture else "N/A", "command": command})
+                return None
+    return None # Should not be reached if check=True and all retries fail
 
 def setup_service_account(project_id):
     """Ensures the service account exists and has the necessary roles efficiently."""
@@ -47,6 +56,9 @@ def setup_service_account(project_id):
             f"--project={project_id}"
         ]
         run_command(create_cmd, "Failed to create service account.")
+        # Wait for service account propagation
+        logger.info("⏳ Waiting for service account propagation (10s)...")
+        time.sleep(10)
     else:
         logger.info(f"✅ Service account {sa_name} already exists.")
 
@@ -93,11 +105,11 @@ def setup_service_account(project_id):
                 "--condition=None",
                 "--quiet"
             ]
-            run_command(bind_cmd, f"Failed to assign role {role}")
+            run_command(bind_cmd, f"Failed to assign role {role}", retries=5, retry_delay=10, error_substring_to_retry="Service account .* does not exist.")
         
         # Wait for IAM propagation only if we actually changed something
-        logger.info("⏳ Waiting for IAM propagation (10s)...")
-        time.sleep(10)
+        logger.info("⏳ Waiting for IAM propagation (30s)...")
+        time.sleep(30)
 
     return sa_email
 
@@ -111,13 +123,14 @@ def deploy_agent():
         return
 
     location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-    agent_path = os.getenv("AGENT_PATH", "./src/agents/a2aeventsnyc")
+    agent_path = os.getenv("AGENT_PATH", "./src/agents/a2a_events_nyc")
     service_name = os.getenv("SERVICE_NAME", "a2a-events-nyc")
     app_name = os.getenv("APP_NAME", "a2aeventsnyc")
 
     # 2. Setup Service Account and Permissions
     sa_email = setup_service_account(project_id)
     if not sa_email:
+        logger.error("❌ Service account setup failed. Aborting deployment.")
         return
 
     # 3. Execute Deployment Command
@@ -143,7 +156,7 @@ def deploy_agent():
         "sa_email": sa_email
     })
     
-    run_command(command, "Deployment failed", capture=False)
+    run_command(command, "Deployment failed", capture=False, retries=5, error_substring_to_retry="Service account .* does not exist.")
 
 if __name__ == "__main__":
     deploy_agent()

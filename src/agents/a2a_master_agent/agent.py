@@ -28,7 +28,7 @@ nyc_events_agent = RemoteA2aAgent(
     name="a2a_events_nyc",
     description="NYC Events Agent",
     agent_card=(
-        f"https://a2a-events-nyc-1056842563084.us-central1.run.app/{AGENT_CARD_WELL_KNOWN_PATH.lstrip('/')}"
+        f"http://127.0.0.1:8080/{AGENT_CARD_WELL_KNOWN_PATH.lstrip('/')}"
     ),
 )
 
@@ -70,11 +70,15 @@ mcp_server = FastMCP("master")
 async def ask_master_agent(query: str) -> str:
     """Ask the master agent a question."""
     try:
+        import uuid
+        # Use unique session ID for each call
+        session_id = f"session_{uuid.uuid4().hex[:8]}"
+        
         # Use run_debug to handle session creation automatically
         events = await runner.run_debug(
             user_messages=query,
             user_id="user",
-            session_id="session",
+            session_id=session_id,
             quiet=True
         )
         
@@ -95,5 +99,26 @@ async def ask_master_agent(query: str) -> str:
 
 
 if __name__ == "__main__":
-    # Expose as MCP server
-    mcp_server.run(transport="http", port=8100)
+    # Create the A2A application
+    app = to_a2a(root_agent, port=8100)
+    
+    # Get the MCP server as an ASGI application (using HTTP transport, not SSE)
+    # Use path="/" because we are mounting it at "/mcp"
+    mcp_app = mcp_server.http_app(path="/")
+    
+    # Mount the MCP server onto the same application
+    app.mount("/mcp", mcp_app)
+
+    # Ensure the MCP app's lifespan is managed by the main app
+    @app.on_event("startup")
+    async def startup_mcp():
+        app.state.mcp_lifespan = mcp_app.lifespan(mcp_app)
+        await app.state.mcp_lifespan.__aenter__()
+
+    @app.on_event("shutdown")
+    async def shutdown_mcp():
+        if hasattr(app.state, "mcp_lifespan"):
+            await app.state.mcp_lifespan.__aexit__(None, None, None)
+    
+    print("Starting Master Agent on port 8100 as both A2A and MCP server (HTTP transport)...")
+    uvicorn.run(app, host="0.0.0.0", port=8100)

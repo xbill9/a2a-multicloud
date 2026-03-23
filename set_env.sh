@@ -14,11 +14,11 @@ if [ "$PROJECT_ID" == "(unset)" ] || [ -z "$PROJECT_ID" ]; then
 fi
 
 cat <<EOF > .env
-GOOGLE_GENAI_USE_VERTEXAI=1
-GOOGLE_CLOUD_PROJECT=$PROJECT_ID
-GOOGLE_CLOUD_LOCATION=us-central1
-IMAGEN_MODEL="imagen-3.0-fast-generate-001"
-GENAI_MODEL="gemini-2.5-flash"
+export GOOGLE_GENAI_USE_VERTEXAI=1
+export GOOGLE_CLOUD_PROJECT=$PROJECT_ID
+export GOOGLE_CLOUD_LOCATION=us-central1
+export IMAGEN_MODEL="imagen-3.0-fast-generate-001"
+export GENAI_MODEL="gemini-2.5-flash"
 EOF
 
 source .env

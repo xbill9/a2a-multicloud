@@ -62,7 +62,7 @@ async def _test_agent_at_port(port: int) -> None:
 async def main() -> None:
     """Main function to run the tests."""
     logging.basicConfig(level=logging.INFO)
-    ports = [8081, 8082, 8083, 8084]
+    ports = [8080,8081, 8082, 8083, 8084]
     for port in ports:
         await _test_agent_at_port(port)
 
