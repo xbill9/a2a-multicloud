@@ -52,6 +52,7 @@ struct AgentCard {
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     id: serde_json::Value,
     method: String,
@@ -101,6 +102,7 @@ struct JsonRpcError {
     message: String,
 }
 
+#[allow(clippy::manual_is_multiple_of)]
 fn is_prime(n: u64) -> bool {
     if n <= 1 {
         return false;
@@ -166,7 +168,8 @@ fn find_mersenne_primes(count: usize) -> (Vec<BigInt>, f64) {
 async fn get_agent_card() -> Json<AgentCard> {
     let model_name = std::env::var("MODEL_NAME").unwrap_or_else(|_| "Not specified".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8104".to_string());
-    let public_url = std::env::var("PUBLIC_URL").unwrap_or_else(|_| format!("http://0.0.0.0:{}", port));
+    let public_url =
+        std::env::var("PUBLIC_URL").unwrap_or_else(|_| format!("http://0.0.0.0:{}", port));
     Json(AgentCard {
         name: "Mersenne Prime Agent Rust",
         description: format!(
@@ -274,7 +277,6 @@ async fn handle_rpc(Json(req): Json<JsonRpcRequest>) -> Json<serde_json::Value> 
     let re_number = RE_NUMBER.get_or_init(|| Regex::new(r"(\d+)").unwrap());
 
     let mut exponent: Option<u64> = None;
-    let count: Option<usize> = None;
 
     for part in &params.message.parts {
         match part {
@@ -313,15 +315,18 @@ async fn handle_rpc(Json(req): Json<JsonRpcRequest>) -> Json<serde_json::Value> 
                 "not prime".to_string()
             }
         } else {
-            let c = count.unwrap_or(5);
+            let c = 5;
             let (primes, elapsed) = find_mersenne_primes(c);
 
             format!(
                 "Found first {} Mersenne primes in {:.2}ms. Primes: {:?}",
-                primes.len(), elapsed, primes
+                primes.len(),
+                elapsed,
+                primes
             )
         }
-    }).await;
+    })
+    .await;
 
     let response_text = match result {
         Ok(text) => text,
