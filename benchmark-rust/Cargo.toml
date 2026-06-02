@@ -2,6 +2,8 @@
 name = "benchmark-local-rust"
 version = "0.1.0"
 edition = "2024"
+description = "Local Rust sub-agent for prime calculations in the A2A Multi-Cloud Benchmark system"
+license = "MIT"
 
 [dependencies]
 axum = "0.7"
