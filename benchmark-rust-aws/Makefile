@@ -14,7 +14,7 @@ AWS_REGION ?= us-east-1
 LIGHTSAIL_SERVICE_NAME ?= a2a-lightsail-rust-aws
 IMAGE_NAME ?= mcp-server-image
 
-.PHONY: all build run clean release test test-a2a fmt clippy check docker-build deploy-lightsail start stop status help lightsail-status endpoint push-lightsail create-deployment aws-destroy lightsail deploy
+.PHONY: all build run clean release test test-a2a fmt clippy check docker-build deploy-lightsail start stop status help lightsail-status endpoint push-lightsail create-deployment aws-destroy lightsail deploy a2a card aws-card
 
 # The default target
 all: build
@@ -124,9 +124,13 @@ lightsail-status:
 
 # Target to get the public endpoint URL
 endpoint:
-	@aws lightsail get-container-services --service-name $(LIGHTSAIL_SERVICE_NAME) --region $(AWS_REGION) \
-		--query 'containerServices[0].url' \
-		--output text
+	@URL=$$(aws lightsail get-container-services --service-name $(LIGHTSAIL_SERVICE_NAME) --region $(AWS_REGION) --query 'containerServices[0].url' --output text 2>/dev/null); \
+	if [ -z "$$URL" ] || [ "$$URL" = "None" ] || [ "$$URL" = "null" ]; then \
+		echo "$${AWS_AGENT_URL:-https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com}" | tr -d '"'; \
+	else \
+		echo "$$URL" | tr -d '"'; \
+	fi
+
 
 push-lightsail:
 	@echo "Pushing the Docker image to Lightsail..."
@@ -140,6 +144,28 @@ create-deployment:
 		--service-name $(LIGHTSAIL_SERVICE_NAME) \
 		--containers "{\"$(LIGHTSAIL_SERVICE_NAME)\":{\"image\":\"$$IMAGE_IDENTIFIER\",\"ports\":{\"8080\":\"HTTP\"},\"environment\":{\"ALLOWED_HOSTS\":\"*,$$URL,0.0.0.0,localhost,127.0.0.1\"}}}" \
 		--public-endpoint "{\"containerName\":\"$(LIGHTSAIL_SERVICE_NAME)\",\"containerPort\":8080,\"healthCheck\":{\"path\":\"/health\"}}"
+
+# Target to send an A2A message to get the status of the AWS deployed agent
+a2a:
+	@URL=$$(aws lightsail get-container-services --service-name $(LIGHTSAIL_SERVICE_NAME) --region $(AWS_REGION) --query 'containerServices[0].url' --output text 2>/dev/null); \
+	if [ -z "$$URL" ] || [ "$$URL" = "None" ] || [ "$$URL" = "null" ]; then \
+		URL="$${AWS_AGENT_URL:-https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com}"; \
+	fi; \
+	URL=$${URL%/}; \
+	echo "Sending A2A status request to $$URL/..."; \
+	PAYLOAD='{"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {"message": {"kind": "message", "messageId": "status-query-id", "role": "user", "parts": [{"kind": "text", "text": "status"}], "contextId": "status-context-id"}}}'; \
+	curl -s -m 5 -X POST -H "Content-Type: application/json" -d "$$PAYLOAD" "$$URL/" | jq . 2>/dev/null || curl -s -m 5 -X POST -H "Content-Type: application/json" -d "$$PAYLOAD" "$$URL/" || echo "Error: Failed to fetch status from $$URL"
+
+card: aws-card
+
+aws-card:
+	@URL=$$(aws lightsail get-container-services --service-name $(LIGHTSAIL_SERVICE_NAME) --region $(AWS_REGION) --query 'containerServices[0].url' --output text 2>/dev/null); \
+	if [ -z "$$URL" ] || [ "$$URL" = "None" ] || [ "$$URL" = "null" ]; then \
+		URL="$${AWS_AGENT_URL:-https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com}"; \
+	fi; \
+	URL=$${URL%/}; \
+	echo "Fetching agent card from $$URL/.well-known/agent-card.json ..."; \
+	curl -s -m 5 "$$URL/.well-known/agent-card.json" | jq . 2>/dev/null || curl -s -m 5 "$$URL/.well-known/agent-card.json" || echo "Error: Failed to fetch card from $$URL"
 
 aws-destroy:
 	@echo "Destroying AWS resources for $(LIGHTSAIL_SERVICE_NAME)..."
@@ -159,6 +185,8 @@ help:
 	@echo "    start            Start the server in the background"
 	@echo "    stop             Stop the background server"
 	@echo "    status           Get the status and health of the Lightsail deployed agent"
+	@echo "    a2a              Send an A2A status request to the AWS deployed agent"
+	@echo "    card             Fetch the AWS deployed agent card"
 	@echo "    clean            Clean the project"
 	@echo "    release          Build the project for release"
 	@echo "    test             Run tests"
