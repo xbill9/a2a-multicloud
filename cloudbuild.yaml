@@ -20,7 +20,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1'
+      - 'GOOGLE_GENAI_USE_VERTEXAI=1,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1,MODEL_NAME=gemini-2.5-flash,GCP_AGENT_URL=https://bench-rust-289270257791.us-central1.run.app,AWS_AGENT_URL=https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com,AZURE_AGENT_URL=https://a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io'
 
 # Automatically push the image built in the first step
 images:
@@ -29,4 +29,4 @@ images:
 timeout: 800s
 
 substitutions:
-  _SERVICE_NAME: a2a-events-nyc
+  _SERVICE_NAME: rust-master

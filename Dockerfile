@@ -1,22 +1,28 @@
-# Use an official Python runtime as a parent image.
-FROM python:3.13-slim
+# Use a Rust image for building the application
+FROM rust AS builder
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
-
-# Set the working directory in the container
 WORKDIR /app
 
-# Install requirements for the agent
-COPY src/agents/a2a_events_nyc/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt uvicorn
+# Copy Cargo.toml and Cargo.lock from rust-master
+COPY rust-master/Cargo.toml rust-master/Cargo.lock ./
 
-# Copy the agent source code into the container
-COPY src/agents/a2a_events_nyc/ .
+# Copy the source code
+COPY rust-master/src ./src
 
-# Expose the port the app runs on
+# Build dependencies first. This layer is cached if Cargo.toml and Cargo.lock don't change.
+RUN cargo build --release --locked --target x86_64-unknown-linux-gnu --jobs $(nproc)
+
+# Use a minimal base image for the final stage
+FROM gcr.io/distroless/cc-debian12
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the compiled binary from the builder stage
+COPY --from=builder /app/target/x86_64-unknown-linux-gnu/release/rust-master .
+
+# Expose the port the application listens on
 EXPOSE 8080
 
-# Run the agent
-CMD ["python", "agent.py"]
+# Run the application
+CMD ["./rust-master"]

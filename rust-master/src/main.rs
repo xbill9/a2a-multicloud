@@ -1181,12 +1181,13 @@ async fn main() {
         .route("/mcp", post(handle_mcp_message))
         .route("/mcp/", post(handle_mcp_message));
 
-    let addr = "0.0.0.0:8100";
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8100".to_string());
+    let addr = format!("0.0.0.0:{}", port);
     tracing::info!(
         "🚀 Rust Master A2A and MCP Server started on http://{}",
         addr
     );
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
