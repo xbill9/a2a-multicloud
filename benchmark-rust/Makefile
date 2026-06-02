@@ -8,7 +8,11 @@ PID_FILE := local_agent.pid
 LOG_FILE := local_agent.log
 GET_PID = (lsof -t -i TCP:$(PORT) -sTCP:LISTEN 2>/dev/null || ss -tlnp 2>/dev/null | grep -E "[:\s]$(PORT)\s" | grep -o -E "pid=[0-9]+" | cut -d= -f2) | head -n 1
 
-.PHONY: all build run start stop status clean format check-fmt lint test deps help card a2a
+.PHONY: all build run start stop status clean format check-fmt lint test deps help card a2a endpoint
+
+# Target to get the local agent endpoint URL
+endpoint:
+	@echo "http://localhost:$${PORT:-$(PORT)}"
 
 # The default target
 all: build

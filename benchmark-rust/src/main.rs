@@ -1,6 +1,6 @@
 use axum::{
-    routing::{get, post},
     Json, Router,
+    routing::{get, post},
 };
 use num_bigint::BigInt;
 use regex::Regex;
@@ -281,20 +281,18 @@ async fn handle_rpc(Json(req): Json<JsonRpcRequest>) -> Json<serde_json::Value> 
     for part in &params.message.parts {
         match part {
             Part::Text { text } => {
-                if let Some(caps) = re_exponent.captures(text) {
-                    if let Some(m) = caps.get(2) {
-                        if let Ok(parsed) = m.as_str().parse::<u64>() {
-                            exponent = Some(parsed);
-                            break;
-                        }
-                    }
-                } else if let Some(caps) = re_number.captures(text) {
-                    if let Some(m) = caps.get(1) {
-                        if let Ok(parsed) = m.as_str().parse::<u64>() {
-                            exponent = Some(parsed);
-                            break;
-                        }
-                    }
+                if let Some(caps) = re_exponent.captures(text)
+                    && let Some(m) = caps.get(2)
+                    && let Ok(parsed) = m.as_str().parse::<u64>()
+                {
+                    exponent = Some(parsed);
+                    break;
+                } else if let Some(caps) = re_number.captures(text)
+                    && let Some(m) = caps.get(1)
+                    && let Ok(parsed) = m.as_str().parse::<u64>()
+                {
+                    exponent = Some(parsed);
+                    break;
                 }
             }
         }
