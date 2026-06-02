@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "rust-master": {
+      "command": "cargo",
+      "args": ["run", "--manifest-path", "/home/xbill/a2a-multicloud/rust-master/Cargo.toml", "--quiet", "--", "--stdio"],
+      "env": {
+        "GOOGLE_GENAI_USE_VERTEXAI": "1",
+        "GOOGLE_CLOUD_PROJECT": "aisprint-491218",
+        "GOOGLE_CLOUD_LOCATION": "us-central1",
+        "GENAI_MODEL": "gemini-2.5-flash",
+        "MODEL_NAME": "gemini-2.5-flash"
+      }
+    }
+  }
+}

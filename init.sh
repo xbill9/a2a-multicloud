@@ -46,17 +46,8 @@ if [ -z "$CLOUD_SHELL" ]; then
     fi
 fi
 
-if [ ! -f ".requirements_installed" ]; then
-    pip install -r requirements.txt
-    touch .requirements_installed
-fi
-
 echo "Environment setup"
 cat .env
 
 echo "Cloud Login"
 gcloud auth list
-
-echo "ADK update"
-pip install google-adk --upgrade
-adk --version

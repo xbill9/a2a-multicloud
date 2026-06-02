@@ -1,9 +1,0 @@
-**/__pycache__/
-**/.adk/
-**/.env
-**/.git/
-**/.venv/
-**/node_modules/
-**/tests/
-Dockerfile
-cloudbuild.yaml

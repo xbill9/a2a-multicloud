@@ -1,69 +1,74 @@
-# A2A Hello World
+# Rust A2A Multi-Cloud Benchmark Setup
 
-## Project Overview
-This project serves as a foundational "Hello World" example for developing agents using the Google Agent Development Kit (ADK) and the Agent-to-Agent (A2A) protocol. It demonstrates how to build a simple Python-based agent capable of interacting with external tools (like fetching weather and time information) and provides a comprehensive set of scripts for local development, testing, and deployment to Google Cloud Run. The primary goal is to offer a clear, runnable template for developers to quickly get started with ADK and A2A agent development, showcasing the power of inter-agent communication.
+This repository contains a Rust-only implementation of a multi-agent system using the Agent-to-Agent (A2A) protocol and Model Context Protocol (MCP). It features a central **Rust Master Agent** that coordinates prime calculations and benchmarks by delegating tasks to dedicated Rust sub-agents running locally or deployed across AWS, GCP, and Azure.
 
-## Setup Scripts
+## Project Structure
 
-*   `init.sh`: Initializes the environment by prompting the user for their Google Cloud project ID and Gemini API Key. It also runs `gcloud auth application-default login` to get user credentials.
-*   `set_env.sh`: Sets various environment variables required for the other scripts to run. It reads the project ID and Gemini key from the files created by `init.sh`. This script also sets the `PUBLIC_URL` environment variable, which is used to configure the public URL for the agent.
+- [rust-master/](file:///home/xbill/a2a-multicloud/rust-master/): The master coordinator agent. It runs an MCP/A2A server that exposes tools to calculate Mersenne primes and check exponent primality by calling sub-agents. See [rust-master/src/main.rs](file:///home/xbill/a2a-multicloud/rust-master/src/main.rs) for implementation details.
+- [benchmark-rust/](file:///home/xbill/a2a-multicloud/benchmark-rust/): The local Rust sub-agent implementation for prime calculation. See [benchmark-rust/src/main.rs](file:///home/xbill/a2a-multicloud/benchmark-rust/src/main.rs) for implementation details.
+- [benchmark-rust-aws/](file:///home/xbill/a2a-multicloud/benchmark-rust-aws/): The AWS Lightsail deployment configuration and integration tests for the Rust prime agent.
+- [benchmark-rust-gcp/](file:///home/xbill/a2a-multicloud/benchmark-rust-gcp/): The Google Cloud Run deployment configuration and integration tests for the Rust prime agent.
+- [benchmark-rust-azure/](file:///home/xbill/a2a-multicloud/benchmark-rust-azure/): The Azure Container Apps deployment configuration and integration tests for the Rust prime agent.
 
-## ADK Execution Scripts
+## Execution and Test Scripts
 
-These scripts facilitate running the agent in various modes and environments:
+- [a2a-master-rust.sh](file:///home/xbill/a2a-multicloud/a2a-master-rust.sh): Starts the local Rust master coordinator agent.
+- [set_env.sh](file:///home/xbill/a2a-multicloud/set_env.sh): Sourcing script to configure standard GCP environment variables and connection URLs for deployed cloud agents.
+- [set_adc.sh](file:///home/xbill/a2a-multicloud/set_adc.sh): Helper script to configure Google Application Default Credentials.
+- [Makefile](file:///home/xbill/a2a-multicloud/Makefile): Defines standard development commands.
 
-*   `cli.sh` / `run.sh`: Runs the agent in command-line mode, allowing you to interact with it from your terminal. `run.sh` is an alias for `cli.sh`.
-*   `local.sh`: Runs the agent in a local web server, accessible typically at `http://localhost:8080`.
-*   `web.sh`: Runs the agent in a local web server and automatically opens the UI in your default web browser.
-*   `api_server.sh`: Runs the agent in API server mode, exposing its functionalities via a RESTful API.
-*   `cloudrun.sh`: Deploys the agent as a scalable service to Google Cloud Run, making it accessible publicly.
+## Commands
 
-## Agent-Specific Execution Scripts
+### Sourcing Environment Setup
 
-These scripts are tailored for specific agents within the project, demonstrating various A2A interactions and functionalities:
+Prior to running make targets, prepare the cloud credentials and endpoint definitions:
+```bash
+source ./set_env.sh
+```
 
-*   `a2acard.sh`: Runs the `a2a-agentcard` agent, which handles agent card-related interactions.
-*   `a2aevents.sh`: Executes the `a2a-events` agent, designed for finding events with Google Search Tool.
-*   `a2ahello.sh`: Runs the `a2a-hello-world` agent, a basic example of A2A communication.
-*   `a2amaster.sh`: Starts the `a2a-master-agent`, which orchestrates interactions between other agents.
-*   `a2atest.sh`: A utility script for testing A2A agent functionalities using the client test script.
-*   `a2aweather.sh`: Runs the `a2a-weather-time` agent, demonstrating tool usage for weather and time information.
+### Build
 
-### Poly Agents Scripts
-These scripts manage agents in a multi-language "Poly" environment:
-*   `poly-python.sh`: Runs the Python-based random number agent (`poly_rand`).
-*   `poly-master.sh`: Runs the Poly Master Agent which orchestrates agents across different languages (Go, JS, Python).
-*   `poly-go.sh`: Runs the Go-based prime checker agent.
-*   `adk-python.sh` / `adk-master-python.sh` / `adk-random-python.sh`: These scripts launch the ADK Web UI for the Poly Python agents.
+To compile the master and local agent:
+```bash
+make build
+```
 
-### Utility Scripts
-*   `inspect.sh`: Launches the A2A Inspector tool to visualize agent interactions.
-*   `set_adc.sh`: Helper script to set up Google Application Default Credentials.
+### Start
 
-## Agent Details
+To run the Rust master agent locally (starts on http://0.0.0.0:8100):
+```bash
+make start
+```
 
-The project includes several agents, each demonstrating different capabilities:
+### Status
 
-*   **A2A Hello World** (`src/agents/a2a_hello_world`): Basic tool usage (weather, time).
-*   **A2A Events** (`src/agents/a2a_events`): Uses Google Search to find local events.
-*   **A2A Master Agent** (`src/agents/a2a_master_agent`): Demonstrates orchestration by delegating to other agents.
-*   **Poly Rand Agent** (`poly-python/agents/poly_rand`): Generates random numbers, even numbers, or odd numbers.
-*   **Poly Master Agent** (`poly-python/agents/poly_master`): Orchestrates a multi-language setup, delegating to Go, JS, and Python agents.
+To check the deployment and health status of all Rust sub-agents (AWS, GCP, Azure) and local servers:
+```bash
+make status
+```
 
-## A2A Protocol Integration
+### Test
 
-This project highlights the integration of the Agent-to-Agent (A2A) protocol, enabling seamless communication between different agents. The agent-specific scripts (e.g., `a2ahello.sh`, `a2aweather.sh`) are designed to run agents in A2A mode, allowing them to send and receive messages from other agents.
+To run unit tests across Rust modules:
+```bash
+make test
+```
 
-### Cross-Language Orchestration
-The Poly Master Agent (`poly-master.sh`) demonstrates how an ADK agent can orchestrate sub-agents written in different languages (Go, Node.js, Python) using the A2A protocol. This is a powerful pattern for building heterogeneous multi-agent systems.
+To run cloud integration tests specifically:
+```bash
+make test-aws
+make test-gcp
+make test-azure
+```
 
-## Development
+## How It Works
 
-To extend or modify this agent:
+1. **A2A Communication**:
+   - The master coordinator calls sub-agents via standard A2A JSON-RPC payload format, invoking the `message/send` method.
+   - The GCP sub-agent requires authentication using GCP ID tokens, which the master generates dynamically via Application Default Credentials (ADC) if available.
 
-1.  **Locate Agent Code:** The main agent implementations are in `src/agents/` and `poly-python/agents/`.
-2.  **Add Tools:** Define new tools within the agent's `tools` list.
-3.  **Modify Agent Logic:** Adjust the agent's prompt or add new functionalities within the `agent.py` file.
-4.  **Dependencies:** If new Python packages are required, add them to the respective `requirements.txt` in the agent's directory.
-5.  **Testing:** Utilize the `a2atest.sh` script to verify inter-agent communication.
-6.  **Inspection:** Use `inspect.sh` to debug and visualize A2A message flows.
+2. **Benchmarking Exponents**:
+   - Calling the `calculate_mersenne_prime` tool (via the MCP interface) initiates a benchmark run from exponent 1 to `n`.
+   - The master agent cycles through ready cloud and local sub-agents to verify primality using the Lucas-Lehmer test.
+   - A detailed breakdown table is output, showing the assigned agent, ready check latency, calculation duration, and primality result.
+   - The benchmark run metadata is logged to `benchmark_results.json` and archived timestamped copies.

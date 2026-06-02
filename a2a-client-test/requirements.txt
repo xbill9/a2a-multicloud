@@ -1,2 +1,0 @@
-httpx
-a2a-sdk

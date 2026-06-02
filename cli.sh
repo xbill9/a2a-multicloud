@@ -1,7 +1,0 @@
-. $HOME/a2a-multicloud/set_env.sh
-
-cd src/agents/a2a_hello_world
-
-echo `pwd`
-echo adk run .
-adk run .

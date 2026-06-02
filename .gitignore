@@ -24,3 +24,14 @@ level_3-fargate/.aws_creds
 adkui-lightsail/.aws_creds
 adkui-fargate/.aws_creds
 level_3-lightsail/.requirements_installed
+
+# Rust / Cargo
+**/target/
+target/
+
+# Benchmark results
+benchmark_results*.json
+
+# Credentials / Secrets
+**/*creds*
+**/.aws_creds*

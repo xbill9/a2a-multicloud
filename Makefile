@@ -1,71 +1,63 @@
-# Makefile for testapp.py
+# Makefile for Rust A2A Multi-Cloud Benchmark Setup
 
-.PHONY: all run build test lint format status pull push clean docs
+.PHONY: all build start test test-aws test-gcp test-azure status git-status clean
 
-# Variables
-COUNT ?= 10
+all: build
 
-all: test lint
+# Target to start the rust MCP/A2A server
+start:
+	@echo "Starting the Rust MCP/A2A server..."
+	@bash ./a2a-master-rust.sh
 
-# Target to run the application
-run:
-	@echo "Running the application..."
-	@python src/agents/a2a_hello_world/agent.py $(COUNT)
-
-# Target to build the application (placeholder)
+# Target to build the application
 build:
-	@echo "Building the application..."
-	@echo "No build steps defined for this project."
+	@echo "Building Rust Master..."
+	@$(MAKE) -C rust-master build
+	@echo "Building Rust Benchmark Agent..."
+	@$(MAKE) -C benchmark-rust build
 
 # Target to run tests
 test:
-	@echo "Running tests..."
-	@python -m unittest discover src/agents/a2a_hello_world/tests
+	@echo "Running tests for Rust Master..."
+	@$(MAKE) -C rust-master test
+	@echo "Running tests for Rust Benchmark Agent..."
+	@$(MAKE) -C benchmark-rust test
 
-# Target to lint the code
-lint:
-	@echo "Linting the code..."
-	@flake8 src
+test-aws:
+	@echo "Running A2A tests for AWS..."
+	@$(MAKE) -C benchmark-rust-aws test-a2a
 
-# Target to format the code
-format:
-	@echo "Formatting the code..."
-	@black src
+test-gcp:
+	@echo "Running A2A tests for GCP..."
+	@$(MAKE) -C benchmark-rust-gcp test-a2a
+
+test-azure:
+	@echo "Running A2A tests for Azure..."
+	@$(MAKE) -C benchmark-rust-azure test-a2a
 
 # Target to show git status
-status:
+git-status:
 	@echo "Showing git status..."
 	@git status
 
-# Target to pull latest changes from git
-pull:
-	@echo "Pulling latest changes from git..."
-	@git pull
+# Target to check status of all deployed agents (AWS, GCP, Azure)
+status:
+	@echo "========================================="
+	@echo "Checking AWS Deployed Agent Status..."
+	@echo "========================================="
+	-@$(MAKE) -C benchmark-rust-aws status
+	@echo ""
+	@echo "========================================="
+	@echo "Checking GCP Deployed Agent Status..."
+	@echo "========================================="
+	-@$(MAKE) -C benchmark-rust-gcp status
+	@echo ""
+	@echo "========================================="
+	@echo "Checking Azure Deployed Agent Status..."
+	@echo "========================================="
+	-@AZ_RESOURCE_GROUP=a2a-rg-westus2 AZ_ACA_NAME=a2a-app-penguin AZ_ACR_NAME=a2aacrpenguinv2 AZ_ACA_ENV_NAME=a2a-env-penguin $(MAKE) -C benchmark-rust-azure status
 
-# Target to push changes to git
-push:
-	@echo "Pushing changes to git..."
-	@git push
-
-# Target to generate documentation
-docs:
-	@echo "Generating documentation..."
-	@mkdir -p docs
-	@pydoc -w src.agents.a2a_hello_world.agent
-	@mv src.agents.a2a_hello_world.agent.html docs/
-
-.PHONY: clean
 clean:
 	@echo "Cleaning up..."
-	@find . -type f -name "*.pyc" -delete
-	@find . -type d -name ".adk" -exec rm -rf {} +
-	@find . -type d -name "__pycache__" -exec rm -rf {} +
-
-deploy:
-	@echo "Deploying the comic pipeline to Cloud Run..."
-	python3 deploycloudrun.py
-
-# cloud run
-cloudrun:
-	@echo "Submitting build to Google Cloud Build..."
-	@gcloud builds submit . --config cloudbuild.yaml
+	@$(MAKE) -C rust-master clean
+	@$(MAKE) -C benchmark-rust clean
