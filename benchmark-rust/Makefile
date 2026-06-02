@@ -8,7 +8,7 @@ PID_FILE := local_agent.pid
 LOG_FILE := local_agent.log
 GET_PID = (lsof -t -i TCP:$(PORT) -sTCP:LISTEN 2>/dev/null || ss -tlnp 2>/dev/null | grep -E "[:\s]$(PORT)\s" | grep -o -E "pid=[0-9]+" | cut -d= -f2) | head -n 1
 
-.PHONY: all build run start stop status clean format check-fmt lint test deps help card a2a endpoint
+.PHONY: all build release run start stop status clean format check-fmt lint test deps help card a2a endpoint
 
 # Target to get the local agent endpoint URL
 endpoint:
@@ -35,6 +35,11 @@ a2a:
 build:
 	@echo "Building the Rust project..."
 	@cargo build
+
+# Build the project for release
+release:
+	@echo "Building the Rust project in release mode..."
+	@cargo build --release
 
 # Run the project
 run:

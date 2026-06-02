@@ -22,8 +22,12 @@ The project is organized into several directories:
 - `source set_env.sh`: Initialize environment variables and cloud agent endpoints, and generate the `.env` file.
 - `source set_adc.sh`: Initialize Google Application Default Credentials.
 - `make build`: Build both the master and local agent.
+- `make release`: Build the master, local, and sub-agents in release mode.
 - `make start`: Start the local Rust master agent.
 - `make status`: Query the status and health of all sub-agents (AWS, GCP, Azure, and local).
+- `make endpoint`: Query the public/local endpoint URL of all sub-agents or a specific one (options: AGENT=master|local|aws|gcp|azure|all, defaults to all).
+- `make card`: Fetch the agent capability card from an agent (options: AGENT=master|local|aws|gcp|azure|all|<url>, defaults to master).
+- `make a2a`: Query the calculation status of an agent via A2A protocol (options: AGENT=master|local|aws|gcp|azure|all|<url>, defaults to local).
 - `make test`: Run unit tests for the master and local agent.
 - `make test-aws` / `make test-gcp` / `make test-azure`: Run cloud A2A integration tests.
 

@@ -6,7 +6,7 @@ APP_DIR := .
 PORT ?= 8104
 REGION := us-central1
 
-.PHONY: all build run start clean format check-fmt clippy lint test test-a2a deps docker-build deploy help status gcp-status card gcp-card a2a endpoint
+.PHONY: all build release run start clean format check-fmt clippy lint test test-a2a deps docker-build deploy help status gcp-status card gcp-card a2a endpoint
 
 # The default target
 all: build
@@ -15,6 +15,11 @@ all: build
 build:
 	@echo "Building the Rust project..."
 	@cargo build
+
+# Build the project for release
+release:
+	@echo "Building the Rust project in release mode..."
+	@cargo build --release
 
 # Run the project
 run:

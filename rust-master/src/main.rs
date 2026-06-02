@@ -1,6 +1,6 @@
 use axum::{
-    routing::{get, post},
     Json, Router,
+    routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -167,11 +167,10 @@ async fn get_gcp_token() -> Option<String> {
     if let Ok(output) = std::process::Command::new("gcloud")
         .args(["auth", "print-access-token"])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            return Some(token);
-        }
+        let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        return Some(token);
     }
     // Try metadata server (GCP environment e.g. Cloud Run)
     let client = reqwest::Client::new();
@@ -201,11 +200,10 @@ async fn get_gcp_id_token() -> Option<String> {
     if let Ok(output) = std::process::Command::new("gcloud")
         .args(["auth", "print-identity-token"])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            return Some(token);
-        }
+        let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        return Some(token);
     }
     None
 }
@@ -219,12 +217,11 @@ fn get_gcp_project() -> Option<String> {
     if let Ok(output) = std::process::Command::new("gcloud")
         .args(["config", "get-value", "project"])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let proj = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !proj.is_empty() && proj != "(unset)" {
-                return Some(proj);
-            }
+        let proj = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !proj.is_empty() && proj != "(unset)" {
+            return Some(proj);
         }
     }
     None
@@ -233,21 +230,21 @@ fn get_gcp_project() -> Option<String> {
 /// Calls a sub-agent using the A2A POST JSON-RPC protocol.
 async fn call_sub_agent(agent_name: &str, query: &str) -> Result<String, String> {
     let client = reqwest::Client::new();
-    let url =
-        match agent_name {
-            "rust_agent" => std::env::var("RUST_AGENT_URL")
-                .unwrap_or_else(|_| "http://127.0.0.1:8104".to_string()),
-            "gcp_agent" => std::env::var("GCP_AGENT_URL").unwrap_or_else(|_| {
-                "https://bench-rust-wgcq55zbfq-uc.a.run.app".to_string()
-            }),
-            "aws_agent" => std::env::var("AWS_AGENT_URL").unwrap_or_else(|_| {
-                "https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com".to_string()
-            }),
-            "azure_agent" => std::env::var("AZURE_AGENT_URL").unwrap_or_else(|_| {
-                "https://a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io".to_string()
-            }),
-            _ => return Err(format!("Unknown agent name: {}", agent_name)),
-        };
+    let url = match agent_name {
+        "rust_agent" => {
+            std::env::var("RUST_AGENT_URL").unwrap_or_else(|_| "http://127.0.0.1:8104".to_string())
+        }
+        "gcp_agent" => std::env::var("GCP_AGENT_URL")
+            .unwrap_or_else(|_| "https://bench-rust-289270257791.us-central1.run.app".to_string()),
+        "aws_agent" => std::env::var("AWS_AGENT_URL").unwrap_or_else(|_| {
+            "https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com"
+                .to_string()
+        }),
+        "azure_agent" => std::env::var("AZURE_AGENT_URL").unwrap_or_else(|_| {
+            "https://a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io".to_string()
+        }),
+        _ => return Err(format!("Unknown agent name: {}", agent_name)),
+    };
 
     tracing::info!("Calling sub-agent: {} at URL: {}", agent_name, url);
 
@@ -272,10 +269,10 @@ async fn call_sub_agent(agent_name: &str, query: &str) -> Result<String, String>
     });
 
     let mut req = client.post(&url).json(&payload);
-    if agent_name == "gcp_agent" {
-        if let Some(token) = get_gcp_id_token().await {
-            req = req.bearer_auth(token);
-        }
+    if agent_name == "gcp_agent"
+        && let Some(token) = get_gcp_id_token().await
+    {
+        req = req.bearer_auth(token);
     }
 
     let resp = req
@@ -354,16 +351,19 @@ struct CallTiming {
 async fn run_a2a_benchmark(n: i64) -> Result<String, String> {
     let timestamp = chrono::Local::now().to_rfc3339();
     let file_timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
-    
+
     let mut results = Vec::new();
-    let agents = vec![
+    let agents = [
         ("gcp_agent", "GCP (Cloud Run)"),
         ("aws_agent", "AWS (Lightsail)"),
         ("azure_agent", "Azure (Container Apps)"),
         ("rust_agent", "Rust (Local)"),
     ];
 
-    results.push(format!("### Distributed Mersenne Prime Generation from 1 to {}\n", n));
+    results.push(format!(
+        "### Distributed Mersenne Prime Generation from 1 to {}\n",
+        n
+    ));
 
     let mut summary_table = String::new();
     summary_table.push_str("| Exponent | Assigned Agent | Ready Check Time (ms) | Calc Time (ms) | Result (Mersenne Prime) |\n");
@@ -379,7 +379,7 @@ async fn run_a2a_benchmark(n: i64) -> Result<String, String> {
         let mut assigned = false;
         let mut attempts = 0;
         let max_attempts = agents.len() * 2;
-        
+
         let mut assigned_agent_name = "None";
         let mut status_elapsed = 0.0;
         let mut status_msg = "failed".to_string();
@@ -400,24 +400,43 @@ async fn run_a2a_benchmark(n: i64) -> Result<String, String> {
                 Ok(ref s) if s.trim() == "ready" => {
                     status_msg = "ready".to_string();
                     assigned_agent_name = agent_name;
-                    
+
                     // Send calculation
-                    tracing::info!("Coordinating: Exponent {} is assigned to '{}' ({})", i, agent_name, agent_id);
+                    tracing::info!(
+                        "Coordinating: Exponent {} is assigned to '{}' ({})",
+                        i,
+                        agent_name,
+                        agent_id
+                    );
                     let calc_start = std::time::Instant::now();
                     let calc_res = call_sub_agent(agent_id, &format!("{}", i)).await;
                     calc_elapsed = calc_start.elapsed().as_secs_f64() * 1000.0;
-                    
+
                     match calc_res {
                         Ok(res) => {
                             calc_msg = res.trim().to_string();
                             if calc_msg != "not prime" && !calc_msg.is_empty() {
-                                generated_primes.push(format!("- 2^{} - 1 = {} (via {})", i, calc_msg, agent_name));
+                                generated_primes.push(format!(
+                                    "- 2^{} - 1 = {} (via {})",
+                                    i, calc_msg, agent_name
+                                ));
                             }
-                            tracing::info!("Coordinating: Exponent {} completed by '{}' in {:.2}ms with result: {}", i, agent_name, calc_elapsed, calc_msg);
+                            tracing::info!(
+                                "Coordinating: Exponent {} completed by '{}' in {:.2}ms with result: {}",
+                                i,
+                                agent_name,
+                                calc_elapsed,
+                                calc_msg
+                            );
                         }
                         Err(e) => {
                             calc_msg = format!("Error: {}", e);
-                            tracing::error!("Coordinating: Exponent {} call to '{}' failed: {}", i, agent_name, e);
+                            tracing::error!(
+                                "Coordinating: Exponent {} call to '{}' failed: {}",
+                                i,
+                                agent_name,
+                                e
+                            );
                         }
                     }
                     assigned = true;
@@ -451,22 +470,29 @@ async fn run_a2a_benchmark(n: i64) -> Result<String, String> {
     }
 
     let cumulative_time = total_start.elapsed().as_secs_f64() * 1000.0;
-    
+
     // Save to disk
     let run_data = BenchmarkRun {
         timestamp: timestamp.clone(),
         n,
         cumulative_duration_ms: cumulative_time,
-        agents: vec![
-            AgentBenchmark {
-                agent_id: "coordinator".to_string(),
-                agent_name: "Master Coordinator".to_string(),
-                total_duration_ms: cumulative_time,
-                ready_checks_passed: coordinated_calls.iter().filter(|c| c.status_result == "ready").count(),
-                calc_calls_successful: coordinated_calls.iter().filter(|c| !c.calculation_result.starts_with("Error") && !c.calculation_result.starts_with("Failed")).count(),
-                calls: coordinated_calls,
-            }
-        ],
+        agents: vec![AgentBenchmark {
+            agent_id: "coordinator".to_string(),
+            agent_name: "Master Coordinator".to_string(),
+            total_duration_ms: cumulative_time,
+            ready_checks_passed: coordinated_calls
+                .iter()
+                .filter(|c| c.status_result == "ready")
+                .count(),
+            calc_calls_successful: coordinated_calls
+                .iter()
+                .filter(|c| {
+                    !c.calculation_result.starts_with("Error")
+                        && !c.calculation_result.starts_with("Failed")
+                })
+                .count(),
+            calls: coordinated_calls,
+        }],
     };
 
     if let Ok(json_str) = serde_json::to_string_pretty(&run_data) {
@@ -478,18 +504,21 @@ async fn run_a2a_benchmark(n: i64) -> Result<String, String> {
     let mut final_report = String::new();
     final_report.push_str("## Distributed Mersenne Prime Generation Report\n\n");
     final_report.push_str(&format!("- **Timestamp:** {}\n", timestamp));
-    final_report.push_str(&format!("- **Cumulative Duration:** {:.2} ms\n\n", cumulative_time));
-    
+    final_report.push_str(&format!(
+        "- **Cumulative Duration:** {:.2} ms\n\n",
+        cumulative_time
+    ));
+
     final_report.push_str("### Generated Mersenne Primes:\n");
     if generated_primes.is_empty() {
         final_report.push_str("None found in this range.\n");
     } else {
         final_report.push_str(&generated_primes.join("\n"));
-        final_report.push_str("\n");
+        final_report.push('\n');
     }
     final_report.push_str("\n### Coordinated Exponent Assignments\n\n");
     final_report.push_str(&summary_table);
-    
+
     Ok(final_report)
 }
 
@@ -506,7 +535,7 @@ fn extract_number_from_query(query: &str) -> Option<i64> {
             break;
         }
     }
-    
+
     if let (Some(start), Some(end)) = (start_idx, end_idx) {
         query[start..end].parse::<i64>().ok()
     } else {
@@ -742,10 +771,34 @@ async fn run_coordinator(query: &str) -> Result<String, String> {
 async fn check_sub_agents_health() -> String {
     let client = reqwest::Client::new();
     let agents = vec![
-        ("AWS (Remote)", std::env::var("AWS_AGENT_URL").unwrap_or_else(|_| "https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com".to_string()), "/health"),
-        ("GCP (Remote)", std::env::var("GCP_AGENT_URL").unwrap_or_else(|_| "https://bench-rust-289270257791.us-central1.run.app".to_string()), "/.well-known/agent.json"),
-        ("Azure (Remote)", std::env::var("AZURE_AGENT_URL").unwrap_or_else(|_| "https://a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io".to_string()), "/.well-known/agent.json"),
-        ("Rust (Local)", std::env::var("RUST_AGENT_URL").unwrap_or_else(|_| "http://127.0.0.1:8104".to_string()), "/.well-known/agent.json"),
+        (
+            "AWS (Remote)",
+            std::env::var("AWS_AGENT_URL").unwrap_or_else(|_| {
+                "https://a2a-lightsail-rust-aws.6wpv8vensby5c.us-east-1.cs.amazonlightsail.com"
+                    .to_string()
+            }),
+            "/health",
+        ),
+        (
+            "GCP (Remote)",
+            std::env::var("GCP_AGENT_URL").unwrap_or_else(|_| {
+                "https://bench-rust-289270257791.us-central1.run.app".to_string()
+            }),
+            "/.well-known/agent.json",
+        ),
+        (
+            "Azure (Remote)",
+            std::env::var("AZURE_AGENT_URL").unwrap_or_else(|_| {
+                "https://a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io"
+                    .to_string()
+            }),
+            "/.well-known/agent.json",
+        ),
+        (
+            "Rust (Local)",
+            std::env::var("RUST_AGENT_URL").unwrap_or_else(|_| "http://127.0.0.1:8104".to_string()),
+            "/.well-known/agent.json",
+        ),
     ];
 
     let mut report = String::new();
@@ -754,19 +807,27 @@ async fn check_sub_agents_health() -> String {
     for (name, url, path) in agents {
         let full_url = format!("{}{}", url.trim_end_matches('/'), path);
         let mut req = client.get(&full_url);
-        
-        if name.contains("GCP") {
-            if let Some(token) = get_gcp_id_token().await {
-                req = req.bearer_auth(token);
-            }
+
+        if name.contains("GCP")
+            && let Some(token) = get_gcp_id_token().await
+        {
+            req = req.bearer_auth(token);
         }
 
         match tokio::time::timeout(std::time::Duration::from_secs(5), req.send()).await {
             Ok(Ok(resp)) => {
                 if resp.status().is_success() {
-                    report.push_str(&format!("  ✅ {}: ONLINE (HTTP {})\n", name, resp.status().as_u16()));
+                    report.push_str(&format!(
+                        "  ✅ {}: ONLINE (HTTP {})\n",
+                        name,
+                        resp.status().as_u16()
+                    ));
                 } else {
-                    report.push_str(&format!("  ❌ {}: OFFLINE (HTTP {})\n", name, resp.status().as_u16()));
+                    report.push_str(&format!(
+                        "  ❌ {}: OFFLINE (HTTP {})\n",
+                        name,
+                        resp.status().as_u16()
+                    ));
                 }
             }
             Ok(Err(e)) => {
@@ -808,7 +869,7 @@ async fn get_agent_card() -> Json<AgentCard> {
                 name: "Calculate Mersenne Prime",
                 description: "Calculates Mersenne prime of n using connected sub-agents.",
                 tags: vec!["mersenne", "prime", "a2a"],
-            }
+            },
         ],
         capabilities: serde_json::json!({}),
         default_input_modes: vec![],
@@ -881,13 +942,19 @@ async fn handle_rpc(Json(req): Json<JsonRpcRequest>) -> Json<serde_json::Value> 
     let result_text = if has_keyword {
         if let Some(n) = extract_number_from_query(&query) {
             if n > 0 && n <= 50 {
-                tracing::info!("Query contains keyword and number {}. Running direct benchmark...", n);
+                tracing::info!(
+                    "Query contains keyword and number {}. Running direct benchmark...",
+                    n
+                );
                 match run_a2a_benchmark(n).await {
                     Ok(res) => res,
                     Err(err) => format!("Error running benchmark: {}", err),
                 }
             } else {
-                format!("Requested benchmark parameter {} is out of bounds (must be between 1 and 50).", n)
+                format!(
+                    "Requested benchmark parameter {} is out of bounds (must be between 1 and 50).",
+                    n
+                )
             }
         } else {
             match run_coordinator(&query).await {

@@ -1,7 +1,9 @@
 [package]
-name = "rust-master"
+name = "benchmark-rust-master"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+description = "Master coordinator agent for the A2A Multi-Cloud Benchmark system"
+license = "MIT"
 
 [dependencies]
 axum = { version = "0.7", features = ["tokio"] }
