@@ -1,7 +1,9 @@
 [package]
 name = "mcp-aca-rust-azure"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+description = "Azure Container Apps Rust sub-agent for prime calculations in the A2A Multi-Cloud Benchmark system"
+license = "MIT"
 
 [dependencies]
 axum = "0.7"

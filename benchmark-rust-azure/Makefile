@@ -17,7 +17,7 @@ FULL_IMAGE_NAME := $(ACR_LOGIN_SERVER)/$(IMAGE_NAME):$(IMAGE_TAG)
 # Project Variables
 SERVICE_NAME := mcp-aca-rust-azure
 
-.PHONY: all build run clean release test test-a2a fmt clippy lint check docker-build deploy status git-status local-status aca-status endpoint push-acr az-login acr-create acr-login aca-logs aca-destroy destroy logs start stop help aca-env-create aca-deploy check-requirements
+.PHONY: all build run clean release test test-a2a fmt clippy lint check docker-build deploy status git-status local-status aca-status endpoint push-acr az-login acr-create acr-login aca-logs aca-destroy destroy logs start stop help aca-env-create aca-deploy check-requirements a2a card aca-card
 
 # Check for required tools
 check-requirements:
@@ -89,7 +89,7 @@ test:
 
 test-a2a:
 	@echo "Running A2A integration test..."
-	@./test-a2a.sh
+	@./test-a2a.sh $$(AZ_RESOURCE_GROUP=$(AZ_RESOURCE_GROUP) AZ_ACA_NAME=$(AZ_ACA_NAME) $(MAKE) -s endpoint)
 
 # Format the code
 fmt:
@@ -181,7 +181,17 @@ aca-status:
 
 # Target to get the public endpoint URL
 endpoint:
-	@az containerapp show --name $(AZ_ACA_NAME) --resource-group $(AZ_RESOURCE_GROUP) --query "properties.configuration.ingress.fqdn" --output tsv 2>/dev/null || echo "Container App $(AZ_ACA_NAME) not found."
+	@FQDN=$$(az containerapp show --name $(AZ_ACA_NAME) --resource-group $(AZ_RESOURCE_GROUP) --query "properties.configuration.ingress.fqdn" --output tsv 2>/dev/null); \
+	if [ -z "$$FQDN" ] || [ "$$FQDN" = "null" ] || [ "$$FQDN" = "None" ]; then \
+		VAL="$${AZURE_AGENT_URL:-https://a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io}"; \
+	else \
+		case "$$FQDN" in \
+			http://*|https://*) VAL="$$FQDN" ;; \
+			*) VAL="https://$$FQDN" ;; \
+		esac; \
+	fi; \
+	echo "$$VAL" | tr -d '"'
+
 
 # Fetch ACA logs
 aca-logs:
@@ -205,6 +215,33 @@ aca-destroy:
 # Alias for aca-destroy
 destroy: aca-destroy
 
+# Target to send an A2A message to get the status of the Azure deployed agent
+a2a:
+	@FQDN=$$(az containerapp show --name $(AZ_ACA_NAME) --resource-group $(AZ_RESOURCE_GROUP) --query "properties.configuration.ingress.fqdn" --output tsv 2>/dev/null); \
+	if [ -z "$$FQDN" ] || [ "$$FQDN" = "null" ]; then \
+		FQDN="$${AZURE_AGENT_URL:-a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io}"; \
+		FQDN=$${FQDN#https://}; \
+	fi; \
+	echo "Sending A2A status request to https://$$FQDN/..."; \
+	PAYLOAD='{"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {"message": {"kind": "message", "messageId": "status-query-id", "role": "user", "parts": [{"kind": "text", "text": "status"}], "contextId": "status-context-id"}}}'; \
+	curl -s -m 5 -X POST -H "Content-Type: application/json" -d "$$PAYLOAD" "https://$$FQDN/" | jq . 2>/dev/null || curl -s -m 5 -X POST -H "Content-Type: application/json" -d "$$PAYLOAD" "https://$$FQDN/" || echo "Error: Failed to fetch status from https://$$FQDN"
+
+card: aca-card
+
+aca-card:
+	@FQDN=$$(az containerapp show --name $(AZ_ACA_NAME) --resource-group $(AZ_RESOURCE_GROUP) --query "properties.configuration.ingress.fqdn" --output tsv 2>/dev/null); \
+	if [ -z "$$FQDN" ] || [ "$$FQDN" = "null" ] || [ "$$FQDN" = "None" ]; then \
+		URL="$${AZURE_AGENT_URL:-https://a2a-app-penguin.icyplant-a768d75c.westus2.azurecontainerapps.io}"; \
+	else \
+		case "$$FQDN" in \
+			http://*|https://*) URL="$$FQDN" ;; \
+			*) URL="https://$$FQDN" ;; \
+		esac; \
+	fi; \
+	URL=$${URL%/}; \
+	echo "Fetching agent card from $$URL/.well-known/agent-card.json ..."; \
+	curl -s -m 5 "$$URL/.well-known/agent-card.json" | jq . 2>/dev/null || curl -s -m 5 "$$URL/.well-known/agent-card.json" || echo "Error: Failed to fetch card from $$URL"
+
 git-status:
 	@git status
 
@@ -221,6 +258,8 @@ help:
 	@echo "    start            Start the server in the background"
 	@echo "    stop             Stop the background server"
 	@echo "    status           Get the status of local and ACA deployments"
+	@echo "    a2a              Send an A2A status request to the Azure deployed agent"
+	@echo "    card             Fetch the Azure deployed agent card"
 	@echo "    clean            Clean the project"
 	@echo "    release          Build the project for release"
 	@echo "    test             Run tests"

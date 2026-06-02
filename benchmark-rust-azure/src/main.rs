@@ -52,6 +52,7 @@ struct AgentCard {
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     id: serde_json::Value,
     method: String,
@@ -101,6 +102,7 @@ struct JsonRpcError {
     message: String,
 }
 
+#[allow(clippy::manual_is_multiple_of)]
 fn is_prime(n: u64) -> bool {
     if n <= 1 {
         return false;
@@ -166,7 +168,8 @@ fn find_mersenne_primes(count: usize) -> (Vec<BigInt>, f64) {
 async fn get_agent_card() -> Json<AgentCard> {
     let model_name = std::env::var("MODEL_NAME").unwrap_or_else(|_| "Not specified".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
-    let public_url = std::env::var("PUBLIC_URL").unwrap_or_else(|_| format!("http://0.0.0.0:{}", port));
+    let public_url =
+        std::env::var("PUBLIC_URL").unwrap_or_else(|_| format!("http://0.0.0.0:{}", port));
     Json(AgentCard {
         name: "Mersenne Prime Agent Rust",
         description: format!(
@@ -274,25 +277,32 @@ async fn handle_rpc(Json(req): Json<JsonRpcRequest>) -> Json<serde_json::Value> 
     let re_number = RE_NUMBER.get_or_init(|| Regex::new(r"(\d+)").unwrap());
 
     let mut exponent: Option<u64> = None;
-    let count: Option<usize> = None;
+    let mut count: Option<usize> = None;
 
     for part in &params.message.parts {
         match part {
             Part::Text { text } => {
-                if let Some(caps) = re_exponent.captures(text) {
-                    if let Some(m) = caps.get(2) {
-                        if let Ok(parsed) = m.as_str().parse::<u64>() {
-                            exponent = Some(parsed);
-                            break;
-                        }
+                let trimmed = text.trim();
+                let is_simple_integer = trimmed.chars().all(|c| c.is_ascii_digit()) && !trimmed.is_empty();
+
+                if let Some(parsed) = re_exponent
+                    .captures(text)
+                    .and_then(|caps| caps.get(2))
+                    .and_then(|m| m.as_str().parse::<u64>().ok())
+                {
+                    exponent = Some(parsed);
+                    break;
+                } else if is_simple_integer {
+                    if let Ok(parsed) = trimmed.parse::<u64>() {
+                        exponent = Some(parsed);
+                        break;
                     }
-                } else if let Some(caps) = re_number.captures(text) {
-                    if let Some(m) = caps.get(1) {
-                        if let Ok(parsed) = m.as_str().parse::<u64>() {
-                            exponent = Some(parsed);
-                            break;
-                        }
-                    }
+                } else if let Some(parsed) = re_number
+                    .captures(text)
+                    .and_then(|caps| caps.get(1))
+                    .and_then(|m| m.as_str().parse::<usize>().ok())
+                {
+                    count = Some(parsed);
                 }
             }
         }
@@ -318,10 +328,13 @@ async fn handle_rpc(Json(req): Json<JsonRpcRequest>) -> Json<serde_json::Value> 
 
             format!(
                 "Found first {} Mersenne primes in {:.2}ms. Primes: {:?}",
-                primes.len(), elapsed, primes
+                primes.len(),
+                elapsed,
+                primes
             )
         }
-    }).await;
+    })
+    .await;
 
     let response_text = match result {
         Ok(text) => text,
